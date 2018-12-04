@@ -554,7 +554,7 @@ class SSDFeatureMatcher(FeatureMatcher):
         # Note: multiple features from the first image may match the same
         # feature in the second image.
 
-        bf = cv2.BFMatcher(cv2.NORM_HAMMING,crossCheck = True)
+        bf = cv2.BFMatcher(cv2.NORM_L2,crossCheck = True)
         matches = bf.match(desc1,desc2)
 
 
@@ -626,8 +626,8 @@ class RatioFeatureMatcher(FeatureMatcher):
             distbackup = np.delete(temp,m.imgIdx,axis=0)
             secmindist = distbackup[np.argmin(distbackup)]
             m.distance = mindist / secmindist
-
-            matches.appende(m)
+            if(m.distance<0.75):
+                matches.appende(m)
 
         # raise Exception("TODO in features.py not implemented")
         # TODO-BLOCK-END

@@ -136,6 +136,7 @@ class HarrisKeypointDetector(KeypointDetector):
         Iy = soby*soby
         Ixy = sobx*soby
 
+
         Wxx = filters.gaussian_filter(Ix,sigma=0.5)
         Wyy = filters.gaussian_filter(Iy,sigma=0.5)
         Wxy = filters.gaussian_filter(Ixy,sigma=0.5)
@@ -315,6 +316,38 @@ class SimpleFeatureDescriptor(FeatureDescriptor):
         grayImage = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         height,width = grayImage.shape[:2]
 
+        orientationImage = np.zeros(srcImage.shape[:2],dtype=float)
+        desc = np.zeros(len(keypoints),16*8)
+        Ix = ndimage.sobel(grayImage,axis=1,mode='reflect')
+        Iy = ndimage.sobel(grayImage,axis=0,mode='reflect')
+        orientationImage  = np.rad2deg(np.arctan2(Iy,Ix))
+
+
+        #SIFT
+        for i,f in enumerate(keypoints):
+            x,y = f.pt
+            x = int(x)
+            y = int(y)
+            contain = np.zeros((16,8))
+            for outcol in range(4):
+                for outrow in range(4):
+                    for incol in range(4):
+                        for inrow in range(4):
+                            distcol = outcol*4 + incol
+                            distrow = outrow*4 + inrow
+
+                            if(x-8+distrow)<0 or (x-8+distrow)>grayImage.shape[1]-1 or (y-8+distcol)<0 or (y-8+distcol)>grayImage.shape[0]-1:
+                                break
+
+                            degree = orientationImage[y-8+distcol,x-8+distrow]
+                            if(degree<0):
+                                degree+=360
+                            degpart = int(degree//45)
+                            contain[outcol*4+outrow,degree] += 1
+
+            contain = np.reshape((1,128));
+            desc[i] = contain
+
 
         newpd = np.zeros((height+4,width+4),dtype=float)
         newpd[2:2+height,2:2+width] = grayImage
@@ -342,6 +375,7 @@ class SimpleFeatureDescriptor(FeatureDescriptor):
             # TODO-BLOCK-BEGIN
             # raise Exception("TODO in features.py not implemented")
             # TODO-BLOCK-END
+
 
         return desc
 
@@ -581,17 +615,6 @@ class SSDFeatureMatcher(FeatureMatcher):
         #     match.distance = sq[bestInd]
         #     matches.append(match)
 
-        distance = scipy.spatial.distance.cdist(desc1, desc2, 'euclidean')
-        for col,row in enumerate(distance):
-            f = cv2.DMatch
-            f.queryIdx = col
-            rowIdx = np.argsort(row)
-            f.trainIdx = rowIdx[0]
-            minest = row[rowIdx[0]]
-            minsec = row[rowIdx[1]]
-            f.distance = minest / float(minsec)
-            matches.append(f)
-
         n1 = desc1.shape[0]
         n2 = desc2.shape[0]
         distance = scipy.spatial.distance.cdist(desc1, desc2, 'euclidean')
@@ -650,6 +673,18 @@ class RatioFeatureMatcher(FeatureMatcher):
         # feature in the second image.
         # You don't need to threshold matches in this function
         # TODO-BLOCK-BEGIN
+
+        # distance = scipy.spatial.distance.cdist(desc1, desc2, 'euclidean')
+        # for col,row in enumerate(distance):
+        #     f = cv2.DMatch
+        #     f.queryIdx = col
+        #     rowIdx = np.argsort(row)
+        #     f.trainIdx = rowIdx[0]
+        #     minest = row[rowIdx[0]]
+        #     minsec = row[rowIdx[1]]
+        #     f.distance = minest / float(minsec)
+        #     matches.append(f)
+
 
         length = desc1.shape[0]
         dist = scipy.spatial.distance.cdist(desc1,desc2,'euclidean')

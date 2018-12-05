@@ -560,6 +560,8 @@ class SSDFeatureMatcher(FeatureMatcher):
 
         # TODO-BLOCK-BEGIN
 
+
+
         # length = desc1.shape[1]
         # dist = distance.cdist(desc1,desc2,'euclidean')
         # for i in range(length):
@@ -579,9 +581,21 @@ class SSDFeatureMatcher(FeatureMatcher):
         #     match.distance = sq[bestInd]
         #     matches.append(match)
 
+        distance = scipy.spatial.distance.cdist(desc1, desc2, 'euclidean')
+        for col,row in enumerate(distance):
+            f = cv2.DMatch
+            f.queryIdx = col
+            rowIdx = np.argsort(row)
+            f.trainIdx = rowIdx[0]
+            minest = row[rowIdx[0]]
+            minsec = row[rowIdx[1]]
+            f.distance = minest / float(minsec)
+            matches.append(f)
+
         n1 = desc1.shape[0]
         n2 = desc2.shape[0]
-        distance = spatial.distance.cdist(desc1, desc2, 'euclidean')
+        distance = scipy.spatial.distance.cdist(desc1, desc2, 'euclidean')
+
         # print(distance)
 
         match = np.argmin(distance, 1)
@@ -637,25 +651,24 @@ class RatioFeatureMatcher(FeatureMatcher):
         # You don't need to threshold matches in this function
         # TODO-BLOCK-BEGIN
 
-        # length = desc1.shape[1]
-        # dist = distance.cdist(desc1,desc2,'euclidean')
-        # for i in range(length):
-        #     m = cv2.DMatch
-        #     # m.queryIdx
-        #     queryIdx= i
-        #
-        #     temp = dist[i,:]
-        #     # m.imgIdx = np.argmin(temp)
-        #     imgIdx = np.argmin(temp)
-        #
-        #     mindist = temp[imgIdx]
-        #     distbackup = np.delete(temp,imgIdx,axis=0)
-        #     secmindist = distbackup[np.argmin(distbackup)]
-        #     # m.distance = mindist / secmindist
-        #     dista = mindist / secmindist
-        #
-        #     if(dista<0.75):
-        #         matches.append(cv2.DMatch(queryIdx,imgIdx,dista))
+        length = desc1.shape[0]
+        dist = scipy.spatial.distance.cdist(desc1,desc2,'euclidean')
+        for i in range(length):
+            m = cv2.DMatch()
+            # m.queryIdx
+            queryIdx= i
+
+            temp = dist[i]
+            # m.imgIdx = np.argmin(temp)
+            trainIdx = np.argmin(temp)
+
+            mindist = np.min(temp)
+
+            distbackup = np.delete(temp,trainIdx,axis=0)
+            secmindist = distbackup[np.argmin(distbackup)]
+            # m.distance = mindist / secmindist
+            dista = mindist / secmindist
+            matches.append(cv2.DMatch(queryIdx,trainIdx,dista))
 
         # for i, desc in enumerate(desc1):
         #     dif = desc2 - desc
@@ -668,23 +681,24 @@ class RatioFeatureMatcher(FeatureMatcher):
         #     match.distance = sq[bestInds[0]] / sq[bestInds[1]]
         #     matches.append(match)
 
-        distance = spatial.distance.cdist(desc1, desc2, 'euclidean')
-        width,height = distance.shape[:2]
-        newdistance = distance
-        minindex = np.argmin(distance,axis = 1)
-        min1 = np.min(distance,axis = 1)
-        #print(distance.shape[:2])
-        for i in range(width):
-            newdistance[i,int(minindex[i])] = np.max(distance[i])
-        #newdistance = np.delete(distance, minindex,axis=1)
-        min2 = np.min(distance, axis = 1)
-        for i in range(desc1.shape[0]):
-            f = cv2.DMatch()
-            f.queryIdx = i
-            f.trainIdx = int(minindex[i])
-            f.distance = min1[i]/min2[i]
-            #print(f.distance)
-            matches.append(f)
+
+        # distance = scipy.spatial.distance.cdist(desc1, desc2, 'euclidean')
+        # width,height = distance.shape[:2]
+        # newdistance = distance
+        # minindex = np.argmin(distance,axis = 1)
+        # min1 = np.min(distance,axis = 1)
+        # #print(distance.shape[:2])
+        # for i in range(width):
+        #     newdistance[i,int(minindex[i])] = np.max(distance[i])
+        # #newdistance = np.delete(distance, minindex,axis=1)
+        # min2 = np.min(distance, axis = 1)
+        # for i in range(desc1.shape[0]):
+        #     f = cv2.DMatch()
+        #     f.queryIdx = i
+        #     f.trainIdx = int(minindex[i])
+        #     f.distance = min1[i]/min2[i]
+        #     #print(f.distance)
+        #     matches.append(f)
 
         # raise Exception("TODO in features.py not implemented")
         # TODO-BLOCK-END

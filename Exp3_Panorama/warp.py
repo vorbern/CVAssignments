@@ -75,9 +75,11 @@ def computeSphericalWarpMappings(dstShape, f, k1, k2):
     # as output for your code. They should all have the shape
     # (img_height, img_width)
 
-    q[0] = sin(xf)*cos(yf)
-    q[1] = sin(yf)
-    q[2] = cos(xf)*cos(yf)
+    q = np.zeros(3)
+
+    q[0] = np.sin(xf)*np.cos(yf)
+    q[1] = np.sin(yf)
+    q[2] = np.cos(xf)*np.cos(yf)
 
     ## Project
     q[0] = q[0]/q[2]

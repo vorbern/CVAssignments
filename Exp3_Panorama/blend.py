@@ -29,6 +29,30 @@ def imageBoundingBox(img, M):
     """
     #TODO 8
     #TODO-BLOCK-BEGIN
+    # C B
+    # O A
+    height,width = img.shape[:2]
+    O = np.array([0,0,1])
+    A = np.array([0,height-1,1])
+    B = np.array([width-1,height-1,1])
+    C = np.array([width-1,0,1])
+
+    O = np.dot(M,O)
+    A = np.dot(M,A)
+    B = np.dot(M,B)
+    C = np.dot(M,C)
+
+    def up(x):
+        if x<0.0:
+            x = math.floor(x)
+        else:
+            x = math.ceil(x)
+        return x
+
+    minX = up(min(O[0]/O[2], A[0]/A[2], B[0]/B[2], C[0]/C[2]))
+    minY = up(min(O[1]/O[2], A[1]/A[2], B[1]/B[2], C[1]/C[2]))
+    maxX = up(max(O[0]/O[2], A[0]/A[2], B[0]/B[2], C[0]/C[2]))
+    maxY = up(max(O[1]/O[2], A[1]/A[2], B[1]/B[2], C[1]/C[2]))
     raise Exception("TODO in blend.py not implemented")
     #TODO-BLOCK-END
     return int(minX), int(minY), int(maxX), int(maxY)

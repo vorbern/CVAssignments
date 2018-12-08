@@ -3,6 +3,7 @@ import sys
 
 import cv2
 import numpy as np
+import sklearn
 
 
 class ImageInfo:
@@ -73,6 +74,41 @@ def accumulateBlend(img, acc, M, blendWidth):
     # BEGIN TODO 10
     # Fill in this routine
     #TODO-BLOCK-BEGIN
+    h = img.shape[0]
+    w = img.shape[1]
+
+    h_acc = acc.shape[0]
+    w_acc = acc.shape[1]
+
+    ## get the bounding box of img in acc
+    minX, minY, maxX, maxY = imageBoundingBox(img, M)
+
+    for i in range(minX, maxX, 1):
+        for j in range(minY, maxY, 1):
+            # don't want to include black pixels when inverse warping
+            ## whether current pixel black or white
+            p = np.array([i, j, 1.])
+            p = np.dot(inv(M), p)
+            newx = min(p[0] / p[2], w - 1)
+            newy = min(p[1] / p[2], h - 1)
+
+            if newx < 0 or newx >= w or newy < 0 or newy >= h:
+                continue
+            if img[newy, newx, 0] == 0 and img[newy, newx, 1] == 0 and img[newy, newx, 2] == 0:
+                continue
+            if newx >= 0 and newx < w - 1 and newy >= 0 and newy < h - 1:
+                weight = 1.0
+                if newx >= minX and newx < minX + blendWidth:
+                    weight = 1. * (newx - minX) / blendWidth
+                if newx <= maxX and newx > maxX - blendWidth:
+                    weight = 1. * (maxX - newx) / blendWidth
+                acc[j, i, 3] += weight
+
+                for k in range(3):
+                    acc[j, i, k] += img[int(newy), int(newx), k] * weight
+
+    #*******Try1
+    # acc[:,:,0:2] = cv2.remap(img,)
     raise Exception("TODO in blend.py not implemented")
     #TODO-BLOCK-END
     # END TODO
@@ -89,6 +125,26 @@ def normalizeBlend(acc):
     # BEGIN TODO 11
     # fill in this routine..
     #TODO-BLOCK-BEGIN
+    h,w = acc.shape[0:1]
+    img = np.zeros((h,w,3))
+#****Try1
+    # temp1 = acc[:,:,3]
+    # temp1.apply(lambda x:0 if x<0 else 1)
+    # temp = acc[:,:,0:2]
+    # temp = temp*temp1
+    # img = temp / acc[:,:,3]
+    # img = np.uint8(img)
+    for i in range(0, w_acc, 1):
+        for j in range(0, h_acc, 1):
+            if acc[j,i,3]>0:
+                img[j,i,0] = int (acc[j,i,0] / acc[j,i,3])
+                img[j,i,1] = int (acc[j,i,1] / acc[j,i,3])
+                img[j,i,2] = int (acc[j,i,2] / acc[j,i,3])
+            else:
+                img[j,i,0] = 0
+                img[j,i,1] = 0
+                img[j,i,2] = 0
+    img = np.uint8(img)
     raise Exception("TODO in blend.py not implemented")
     #TODO-BLOCK-END
     # END TODO
@@ -123,7 +179,7 @@ def getAccSize(ipv):
     for i in ipv:
         M = i.position
         img = i.img
-        _, w, c = img.shape
+        h, w, c = img.shape
         if channels == -1:
             channels = c
             width = w
@@ -131,6 +187,11 @@ def getAccSize(ipv):
         # BEGIN TODO 9
         # add some code here to update minX, ..., maxY
         #TODO-BLOCK-BEGIN
+        minx,miny,maxx,maxy = imageBoundingBox(img,M)
+        minX = min(minX,minx)
+        minY = min(minY,miny)
+        maxX = max(maxX,maxx)
+        maxY = max(maxY,maxy)
         raise Exception("TODO in blend.py not implemented")
         #TODO-BLOCK-END
         # END TODO
@@ -138,7 +199,7 @@ def getAccSize(ipv):
     # Create an accumulator image
     accWidth = int(math.ceil(maxX) - math.floor(minX))
     accHeight = int(math.ceil(maxY) - math.floor(minY))
-    print 'accWidth, accHeight:', (accWidth, accHeight)
+    print('accWidth, accHeight:', (accWidth, accHeight))
     translation = np.array([[1, 0, -minX], [0, 1, -minY], [0, 0, 1]])
 
     return accWidth, accHeight, channels, width, translation
@@ -223,6 +284,8 @@ def blendImages(ipv, blendWidth, is360=False, A_out=None):
     # Note: warpPerspective does forward mapping which means A is an affine
     # transform that maps accumulator coordinates to final panorama coordinates
     #TODO-BLOCK-BEGIN
+    if is360 :
+        A = computeDrift(x_init, y_init, x_final, y_final, width)
     raise Exception("TODO in blend.py not implemented")
     #TODO-BLOCK-END
     # END TODO

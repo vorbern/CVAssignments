@@ -287,7 +287,7 @@ class HarrisKeypointDetector(KeypointDetector):
             Idx+=1
 
             x1,y1 = f1.pt
-            if(f1.response > crobust*hmax)
+            if(f1.response > crobust*hmax):
                 r[Idx] = float("inf")
 
             else:
@@ -358,13 +358,6 @@ class HarrisKeypointDetector(KeypointDetector):
         return  finalfeatures
 
 
-
-
-
-
-
-
-
 class ORBKeypointDetector(KeypointDetector):
     def detectKeypoints(self, image):
         '''
@@ -409,7 +402,11 @@ class SimpleFeatureDescriptor(FeatureDescriptor):
         '''
 
 #*****************Try2
-        grayImage1=np.pad(grayImage,[(5,5),(5,5)],'constant',constant_values=(0,0))
+
+        image = image.astype(np.float32)
+        image /= 255.
+        grayImage = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        grayImage1=np.pad(grayImage,[(5,5),(5,5)],mode='constant')
         desc = np.zeros((len(keypoints), 5 * 5))
 
         for i, f in enumerate(keypoints):
@@ -607,10 +604,10 @@ class CustomFeatureDescriptor(FeatureDescriptor):
                             distcol = outcol*4 + incol
                             distrow = outrow*4 + inrow
 
-                            if(y-8+distrow)<0 or (y-8+distrow)>grayImage.shape[0]-1 or (x-8+distcol)<0 or (x-8+distcol)>grayImage.shape[1]-1:
+                            if(y-7+distrow)<0 or (y-7+distrow)>grayImage.shape[0]-1 or (x-7+distcol)<0 or (x-7+distcol)>grayImage.shape[1]-1:
                                 break
 
-                            degree = orientationImage[y-8+distrow,x-8+distcol]
+                            degree = orientationImage[y-7+distrow,x-7+distcol]
                             if(degree<0):
                                 degree+=360
                             degpart = int(degree//45)
@@ -625,6 +622,7 @@ class CustomFeatureDescriptor(FeatureDescriptor):
 
             desc[i] = contain
 
+        return desc
         # raise NotImplementedError('NOT IMPLEMENTED')
 
 

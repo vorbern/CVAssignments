@@ -31,7 +31,8 @@ def compute_photometric_stereo_impl(lights, images):
                   input images.
         normals -- float32 height x width x 3 image with dimensions matching
                    the input images.
-    """
+"""
+
     L = lights
     L_T = L.T
     albedo = np.zeros((images[0].shape[0], images[0].shape[1], images[0].shape[2]), dtype=np.float32)
@@ -41,19 +42,16 @@ def compute_photometric_stereo_impl(lights, images):
         for row in range(images[0].shape[0]):
             for col in range(images[0].shape[1]):
                 I = [(images[i][row][col][channel]).T for i in range(len(images))]
-                term2 = L_T.dot(I)
+                term2 = L_T.dot(I)  # LT*I
                 G = term1.dot(term2)
                 k = np.round(np.linalg.norm(G), 5)
                 if k < 1e-7:
                     k = 0
                 else:
-                    normals[row][col] += G/k
+                    normals[row][col] += G / k
                 albedo[row][col][channel] = k
     normals /= images[0].shape[2]
     return albedo, normals
-
-    #raise NotImplementedError()
-
 
 
 
@@ -77,9 +75,10 @@ def project_impl(K, Rt, points):
             curr_point = np.array(points[row_i, col_j])
             fourvec = np.array([curr_point[0], curr_point[1], curr_point[2], 1.0])
             homogenous_pt = projection_matrix.dot(fourvec)
-            projections[row_i, col_j] = np.array([homogenous_pt[0]/homogenous_pt[2], homogenous_pt[1]/homogenous_pt[2]])
+            projections[row_i, col_j] = np.array(
+                [homogenous_pt[0] / homogenous_pt[2], homogenous_pt[1] / homogenous_pt[2]])
 
-    #raise NotImplementedError()
+    return projections
 
 
 
@@ -122,7 +121,7 @@ def preprocess_ncc_impl(image, ncc_size):
     +------+------+  +------+------+  v
     width ------->
 
-    v = [ x111, x121, x211, x112, x112, x122, x212, x222 ]
+    v = [ x111, x121, x211, x221, x112, x122, x212, x222 ]
 
     see order argument in np.reshape
 
@@ -133,40 +132,39 @@ def preprocess_ncc_impl(image, ncc_size):
         normalized -- heigth x width x (channels * ncc_size**2) array
     """
     height, width, channels = image.shape
-    window_offset = int(ncc_size/2)
-    normalized = np.zeros((height, width, (channels * (ncc_size**2))))
-    for row_i in range(window_offset, height-window_offset):
-        for col_k in range(window_offset, width-window_offset):
-            patch_vector = image[row_i - window_offset:row_i + window_offset + 1, col_k - window_offset:col_k + window_offset + 1,:]
-            mean_vec = np.mean(np.mean(patch_vector, axis=0), axis=0)
+    window_offset = int(ncc_size / 2)
+    normalized = np.zeros((height, width, (channels * (ncc_size ** 2))))#
+    for row_i in range(window_offset, height - window_offset):
+        for col_k in range(window_offset, width - window_offset):
+            patch_vector = image[row_i - window_offset:row_i + window_offset + 1,
+                           col_k - window_offset:col_k + window_offset + 1, :]
+            mean_vec = np.mean(np.mean(patch_vector, axis=0), axis=0)#
             patch_vector = patch_vector - mean_vec
 
-            temp_vec = np.zeros((channels * (ncc_size**2)))
+            temp_vec = np.zeros((channels * (ncc_size ** 2)))#
 
-            # big_index = 0
-            #
-            # for channel in range(channels):
-            #     for row in range(patch_vector.shape[0]):
-            #         for col in range(patch_vector.shape[1]):
-            #             temp_vec[big_index] = patch_vector[row,col,channel]
-            #             big_index += 1
+            big_index = 0
 
-        #*********Try1*************
-            temp_vec = patch_vector.reshape(-1)
+            for channel in range(channels):
+                for row in range(patch_vector.shape[0]):
+                    for col in range(patch_vector.shape[1]):
+                        temp_vec[big_index] = patch_vector[row, col, channel]
+                        big_index += 1
+
             patch_vector = temp_vec
-            if(np.linalg.norm(patch_vector) >= 1e-6):
+            if (np.linalg.norm(patch_vector) >= 1e-6):#
                 patch_vector /= np.linalg.norm(patch_vector)
-            else:
-                patch_vector = np.zeros((channels * ncc_size**2))
+            else:#
+                patch_vector = np.zeros((channels * ncc_size ** 2))
 
             normalized[row_i, col_k] = patch_vector
 
     return normalized
-    #raise NotImplementedError()
 
 
 def compute_ncc_impl(image1, image2):
     """
+
     Compute normalized cross correlation between two images that already have
     normalized vectors computed for each pixel with preprocess_ncc.
 
@@ -177,40 +175,30 @@ def compute_ncc_impl(image1, image2):
         ncc -- height x width normalized cross correlation between image1 and
                image2.
     """
-    height, width = image1.shape[:2] # extract shape
-    ncc = np.zeros((height, width)) # new matrix
+    height, width = image1.shape[:2]
+    ncc = np.zeros((height, width))
 
-    # iterate through each pixel and compute cross correlation at each
-    # for row_i in range(height):
-    #     for col_k in range(width):
-    #         ncc[row_i, col_k] = np.correlate(image1[row_i, col_k], image2[row_i, col_k])
+    for row_i in range(height):
+        for col_k in range(width):
+            ncc[row_i, col_k] = np.correlate(image1[row_i, col_k], image2[row_i, col_k])
 
-    #*******Try2********
-    ncc_temp = image1*image2
-    ncc = np.sum(ncc_temp,axis=2)
     return ncc
-
-    # raise NotImplementedError()
 
 
 def form_poisson_equation_impl(height, width, alpha, normals, depth_weight, depth):
     """
-    For 4-credit students only
     Creates a Poisson equation given the normals and depth at every pixel in image.
     The solution to Poisson equation is the estimated depth.
-
     When the mode, is 'depth' in 'combine.py', the equation should return the actual depth.
-
     When it is 'normals', the equation should integrate the normals to estimate depth.
-
     When it is 'both', the equation should weight the contribution from normals and actual depth,
     using  parameter 'depth_weight'.
 
     Input:
         height -- height of input depth,normal array
         width -- width of input depth,normal array
-        alpha -- stores alpha value of at each pixel of image. 
-            If alpha = 0, then the pixel normal/depth should not be 
+        alpha -- stores alpha value of at each pixel of image.
+            If alpha = 0, then the pixel normal/depth should not be
             taken into consideration for depth estimation
         normals -- stores the normals(nx,ny,nz) at each pixel of image
             None if mode is 'depth' in combine.py
@@ -222,7 +210,7 @@ def form_poisson_equation_impl(height, width, alpha, normals, depth_weight, dept
             None if mode is 'normals' in combine.py
     Output:
         constants for equation of type Ax = b
-        A -- left-hand side coefficient of the Poisson equation 
+        A -- left-hand side coefficient of the Poisson equation
             note that A can be a very large but sparse matrix so csr_matrix is used to represent it.
         b -- right-hand side constant of the the Poisson equation
     """
@@ -254,6 +242,9 @@ def form_poisson_equation_impl(height, width, alpha, normals, depth_weight, dept
     Create a system of linear equation to estimate depth using normals and crude depth Ax = b
 
     x is a vector of depths at each pixel in the image and will have shape (height*width)
+    A: ( k, height)
+    x: ( height, width, 3)
+    b: ( k, width)
 
     If mode is 'depth':
         > Each row in A and b corresponds to an equation at a single pixel
@@ -301,36 +292,37 @@ def form_poisson_equation_impl(height, width, alpha, normals, depth_weight, dept
     for row_i in range(height):
         for col_j in range(width):
             k = row_i * width + col_j
-            if alpha[row_i, col_j] != 0 :
+            if alpha[row_i, col_j] != 0:
                 if depth is not None:
-                    b.append(depth_weight * depth[row_i, col_j])#depth
-                    row_ind.append(rn)#depth
-                    col_ind.append(k)#depth
-                    data_arr.append(depth_weight)#depth
-                    rn+=1
+                    b.append(depth_weight * depth[row_i, col_j])  # depth
+                    row_ind.append(rn)  # depth
+                    col_ind.append(k)  # depth
+                    data_arr.append(depth_weight)  # depth
+                    rn += 1
 
                 if normals is not None:
-                    if col_j+1 <= width-1 and alpha[row_i,col_j+1] != 0:
-                        #normals x-axis
+                    if col_j + 1 <= width - 1 and alpha[row_i, col_j + 1] != 0:
+                        # normals x-axis
                         b.append(normals[row_i, col_j, 0])
                         row_ind.append(rn)
                         col_ind.append(k)
-                        data_arr.append(-normals[row_i,col_j,2])
+                        data_arr.append(-normals[row_i, col_j, 2])
                         row_ind.append(rn)
-                        col_ind.append(k+1)
-                        data_arr.append(normals[row_i,col_j,2])
-                        rn+=1
-                    if row_i + 1 <= height - 1 and alpha[row_i+1,col_j] != 0:
-                        #normals mode y-axis
+                        col_ind.append(k + 1)
+                        data_arr.append(normals[row_i, col_j, 2])
+                        rn += 1
+                    if row_i + 1 <= height - 1 and alpha[row_i + 1, col_j] != 0:
+                        # normals mode y-axis
                         b.append(-normals[row_i, col_j, 1])
                         row_ind.append(rn)
                         col_ind.append(k)
                         data_arr.append(-normals[row_i, col_j, 2])
                         row_ind.append(rn)
-                        col_ind.append(k+width)
+                        col_ind.append(k + width)
                         data_arr.append(normals[row_i, col_j, 2])
-                        rn+=1
+                        rn += 1
     row = rn
+
     #TODO Block end
     # Convert all the lists to numpy array
     row_ind = np.array(row_ind, dtype=np.int32)
